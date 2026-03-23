@@ -1,52 +1,37 @@
-import random
+#This code does some operations that ready libraries offer, I tried to implement it for learning. Anyone can call a library.
 
-def to_bit_stream(data_bytes):
-    result = ""
-    for b in data_bytes:
-        result += format(b, '08b')
-    return result
+import hashlib
+import secrets
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-def from_bit_stream(bit_string):
-    byte_list = []
-    for i in range(0, len(bit_string), 8):
-        byte_chunk = bit_string[i : i + 8]
-        byte_value = int(byte_chunk, 2)
-        byte_list.append(byte_value)
-    return bytes(byte_list)
-
-def bit_wise_xor(bits1, bits2):
-    result = ""
-    for i in range(len(bits1)):
-        b1 = int(bits1[i])
-        b2 = int(bits2[i])
-        result += str(b1 ^ b2)
-    return result
-
-
-def generate_prg_key(seed_value, length_in_bits):
-    random.seed(seed_value)
+def generate_secure_keystream(password, length_in_bytes):
+    key = hashlib.sha256(password.encode()).digest()
     
-    key_bits = ""
-    for i in range(length_in_bits):
-        bit = random.randint(0, 1)
-        key_bits += str(bit)
-    return key_bits
+    # We use a random IV so that the same password produces a different pad every time
+    iv = secrets.token_bytes(16)
+    
+    # Use AES in CTR mode to generate the pseudo-random keystream
+    encryptor = Cipher(algorithms.AES(key), modes.CTR(iv)).encryptor()
+    keystream = encryptor.update(b'\x00' * length_in_bytes)
+    
+    return iv, keystream
 
-message = "salam"
-seed = "my_secret_password"
+def xor_bytes(data, pad):
+    return bytes([b1 ^ b2 for b1, b2 in zip(data, pad)])
 
-#Message conversion
-msg_bits = to_bit_stream(message.encode())
-print("Message Bits:  " + msg_bits)
+#Usage
+message = "salam".encode()
+password = "my_secret_password"
 
-#PRG
-keystream = generate_prg_key(seed, len(msg_bits))
-print("PRG Keystream: " + keystream)
+#Generation
+iv, pad = generate_secure_keystream(password, len(message))
 
-#The decryption process
-cipher_bits = bit_wise_xor(msg_bits, keystream)
-print("Cipher Bits:   " + cipher_bits)
+#Encryption
+ciphertext = xor_bytes(message, pad)
 
-#The decryption process
-decrypted_bits = bit_wise_xor(cipher_bits, keystream)
-print("Final Result:  " + from_bit_stream(decrypted_bits).decode())
+# 3. Decryption
+decrypted = xor_bytes(ciphertext, pad)
+
+print(f"Original:  {message.decode()}")
+print(f"Cipher:    {ciphertext.hex()}")
+print(f"Decrypted: {decrypted.decode()}")
