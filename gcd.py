@@ -1,6 +1,6 @@
 ########################################################
 #Finding the GCD
-#In this file, we are going to find the GCD with a lot of methods
+#In this file, we are going to find the GCD with a lot of methods, the extended gcd can be found in the extendedecludian file in this repo.
 
 #Slow version(Loop)
 def gcd(a,b):
