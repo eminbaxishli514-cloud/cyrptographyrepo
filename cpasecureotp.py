@@ -6,21 +6,19 @@ def prf_f(key: bytes, x: bytes) -> bytes:
     return block_function.update(x) + block_function.finalize()
 
 def cpa_encrypt(key: bytes, message: bytes) -> tuple:
-    # 1. IV (r) must be random and unique for every encryption
     iv = secrets.token_bytes(16)
     full_pad = b""
     
-    # 2. Determine how many 16-byte blocks we need
+    #Determine how many 16-byte blocks we need
     num_blocks = (len(message) + 15) // 16
     
-    # 3. Generate a long enough pad by incrementing a counter
-    # We treat the IV as a large integer and add i to it
+    #Generate a long enough pad by incrementing a counter
     iv_int = int.from_bytes(iv, "big")
     for i in range(num_blocks):
         counter_block = ((iv_int + i) % (2**128)).to_bytes(16, "big")
         full_pad += prf_f(key, counter_block)
     
-    # 4. XOR the entire message with the generated long pad
+    #XOR the entire message with the generated long pad
     ciphertext = bytes([m ^ p for m, p in zip(message, full_pad)])
     return iv, ciphertext
 
