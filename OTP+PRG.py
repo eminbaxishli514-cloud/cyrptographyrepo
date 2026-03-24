@@ -1,37 +1,47 @@
 #This code does some operations that ready libraries offer, I tried to implement it for learning. Anyone can call a library.
 
-import hashlib
-import secrets
+import os
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-def generate_secure_keystream(password, length_in_bytes):
-    key = hashlib.sha256(password.encode()).digest()
+def derive_key(password: str, salt: bytes) -> bytes:
+    """Turns a password into a 32-byte key using 600,000 iterations."""
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=600000,
+    )
+    return kdf.derive(password.encode())
+
+def encrypt(password: str, plaintext: str):
+    salt = os.urandom(16)
+    iv = os.urandom(16)
+    key = derive_key(password, salt)
     
-    # We use a random IV so that the same password produces a different pad every time
-    iv = secrets.token_bytes(16)
-    
-    # Use AES in CTR mode to generate the pseudo-random keystream
+    #Encrypt
     encryptor = Cipher(algorithms.AES(key), modes.CTR(iv)).encryptor()
-    keystream = encryptor.update(b'\x00' * length_in_bytes)
-    
-    return iv, keystream
+    ciphertext = encryptor.update(plaintext.encode()) + encryptor.finalize()
+    return salt, iv, ciphertext
 
-def xor_bytes(data, pad):
-    return bytes([b1 ^ b2 for b1, b2 in zip(data, pad)])
+def decrypt(password: str, salt: bytes, iv: bytes, ciphertext: bytes):
+    key = derive_key(password, salt)
+    decryptor = Cipher(algorithms.AES(key), modes.CTR(iv)).decryptor()
+    return (decryptor.update(ciphertext) + decryptor.finalize()).decode()
 
 #Usage
-message = "salam".encode()
-password = "my_secret_password"
-
-#Generation
-iv, pad = generate_secure_keystream(password, len(message))
-
+my_password = "correct-horse-battery-staple"
+message = "My name is Emin, and this is secure."
 #Encryption
-ciphertext = xor_bytes(message, pad)
+salt_val, iv_val, secret_data = encrypt(my_password, message)
 
-# 3. Decryption
-decrypted = xor_bytes(ciphertext, pad)
-
-print(f"Original:  {message.decode()}")
-print(f"Cipher:    {ciphertext.hex()}")
-print(f"Decrypted: {decrypted.decode()}")
+print(f"Stored Salt: {salt_val.hex()}")
+print(f"Stored IV:   {iv_val.hex()}")
+print(f"Ciphertext:  {secret_data.hex()}")
+#Decryption
+try:
+    original_text = decrypt(my_password, salt_val, iv_val, secret_data)
+    print(f"\nDecrypted Message: {original_text}")
+except Exception as e:
+    print("Decryption failed! Check your password.")
