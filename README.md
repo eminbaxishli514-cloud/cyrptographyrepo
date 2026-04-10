@@ -422,3 +422,4 @@ Step 4: It prints `key`.
 #Dependencies note
 `cpasecureotp.py` uses `cryptography` (AES, ECB).
 `OTP+PRG.py` uses `cryptography` (AES, CTR).
+After downloading the prerequisites from requirements.txt, run python "filename" to run the scripts.
